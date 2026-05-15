@@ -7,7 +7,9 @@ import '../providers/selection_provider.dart';
 import 'app_icon.dart';
 
 class ResultsList extends ConsumerStatefulWidget {
-  const ResultsList({super.key});
+  const ResultsList({super.key, this.onActivate});
+
+  final VoidCallback? onActivate;
 
   @override
   ConsumerState<ResultsList> createState() => _ResultsListState();
@@ -79,8 +81,10 @@ class _ResultsListState extends ConsumerState<ResultsList> {
             final isSelected = index == selected;
             final iconPath = resolver?.resolve(entry.icon);
             return InkWell(
-              onTap: () =>
-                  ref.read(selectedIndexProvider.notifier).setIndex(index),
+              onTap: () {
+                ref.read(selectedIndexProvider.notifier).setIndex(index);
+                widget.onActivate?.call();
+              },
               child: Container(
                 height: _rowHeight,
                 padding: const EdgeInsets.symmetric(horizontal: 16),

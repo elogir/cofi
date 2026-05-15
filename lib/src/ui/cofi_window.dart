@@ -22,19 +22,44 @@ class CofiWindow extends ConsumerStatefulWidget {
   ConsumerState<CofiWindow> createState() => _CofiWindowState();
 }
 
-class _CofiWindowState extends ConsumerState<CofiWindow> {
+class _CofiWindowState extends ConsumerState<CofiWindow>
+    with WidgetsBindingObserver {
   final FocusNode _shellNode = FocusNode(debugLabel: 'cofi-shell');
   final FocusNode _searchNode = FocusNode(debugLabel: 'cofi-search');
   final Launcher _launcher = Launcher();
+  AppLifecycleState? _lastLifecycleState;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _shellNode.dispose();
     _searchNode.dispose();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final last = _lastLifecycleState;
+    _lastLifecycleState = state;
+    if (state == AppLifecycleState.inactive &&
+        last == AppLifecycleState.resumed) {
+      _hide();
+    }
+  }
+
+  void _resetState() {
+    ref.read(queryProvider.notifier).set('');
+    ref.read(selectedIndexProvider.notifier).reset();
+  }
+
   Future<void> _hide() async {
+    _resetState();
     try {
       await _windowChannel.invokeMethod('hide');
     } catch (_) {}
@@ -46,13 +71,7 @@ class _CofiWindowState extends ConsumerState<CofiWindow> {
     } catch (_) {}
   }
 
-  void _resetState() {
-    ref.read(queryProvider.notifier).set('');
-    ref.read(selectedIndexProvider.notifier).reset();
-  }
-
   Future<void> _onShowRequested() async {
-    _resetState();
     await _show();
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -144,7 +163,7 @@ class _CofiWindowState extends ConsumerState<CofiWindow> {
                 ),
                 child: SearchField(focusNode: _searchNode),
               ),
-              const Expanded(child: ResultsList()),
+              Expanded(child: ResultsList(onActivate: _launchSelected)),
             ],
           ),
         ),
