@@ -37,7 +37,7 @@ class DesktopEntryParser {
       if (eq <= 0) continue;
       final key = line.substring(0, eq).trim();
       if (fields.containsKey(key)) continue;
-      fields[key] = line.substring(eq + 1).trim();
+      fields[key] = _unescapeFileValue(line.substring(eq + 1).trim());
     }
 
     if ((fields['Type'] ?? '') != 'Application') return null;
@@ -68,12 +68,50 @@ class DesktopEntryParser {
       id: _basenameWithoutExtension(file.path),
       name: name,
       comment: fields['Comment'],
-      exec: exec,
       icon: (fields['Icon']?.isNotEmpty ?? false) ? fields['Icon'] : null,
-      workingDirectory: fields['Path'],
       keywords: _splitList(fields['Keywords']),
       sourcePath: file.path,
     );
+  }
+
+  // File-level unescape per XDG Desktop Entry Specification, "Value types":
+  //   \\ -> \   \s -> SPACE   \n -> LF   \t -> TAB   \r -> CR
+  // This is applied before any Exec-level tokenisation.
+  String _unescapeFileValue(String raw) {
+    if (!raw.contains(r'\')) return raw;
+    final out = StringBuffer();
+    var i = 0;
+    while (i < raw.length) {
+      final ch = raw[i];
+      if (ch == r'\' && i + 1 < raw.length) {
+        final next = raw[i + 1];
+        switch (next) {
+          case r'\':
+            out.write(r'\');
+            i += 2;
+            continue;
+          case 's':
+            out.write(' ');
+            i += 2;
+            continue;
+          case 'n':
+            out.write('\n');
+            i += 2;
+            continue;
+          case 't':
+            out.write('\t');
+            i += 2;
+            continue;
+          case 'r':
+            out.write('\r');
+            i += 2;
+            continue;
+        }
+      }
+      out.write(ch);
+      i++;
+    }
+    return out.toString();
   }
 
   bool _truthy(String? value) => value?.toLowerCase() == 'true';

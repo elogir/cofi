@@ -140,8 +140,11 @@ Entries are skipped when any of these apply:
 - `TryExec` is set and the named binary isn't on `$PATH`
 - `Terminal=true` (TUI apps like nano/htop are hidden by design)
 
-`Exec` is tokenised respecting `"…"` quoting and the field codes `%f %F %u
-%U %i %c %k %d %D %n %N %v %m` are stripped (`%%` becomes a literal `%`).
+Launching is delegated to `gio launch <path-to-.desktop>` (ships with
+`glib2` on every Linux desktop). That avoids reimplementing the spec's
+Exec parsing — quoting rules, `%f`/`%F`/`%u`/`%U` field codes, `Path=`
+working directory, StartupNotify registration, even D-Bus-activatable
+apps are all handled by glib.
 
 ## Launch-count ranking
 
