@@ -29,6 +29,14 @@ class _SearchFieldState extends ConsumerState<SearchField> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String>(queryProvider, (_, next) {
+      if (_controller.text != next) {
+        _controller.value = TextEditingValue(
+          text: next,
+          selection: TextSelection.collapsed(offset: next.length),
+        );
+      }
+    });
     return TextField(
       controller: _controller,
       autofocus: true,

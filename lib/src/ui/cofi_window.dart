@@ -1,14 +1,16 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../launcher/launcher.dart';
 import '../providers/filtered_provider.dart';
+import '../providers/query_provider.dart';
 import '../providers/selection_provider.dart';
+import '../providers/show_signal_provider.dart';
 import 'results_list.dart';
 import 'search_field.dart';
+
+const MethodChannel _windowChannel = MethodChannel('dev.cofi.cofi/window');
 
 class CofiWindow extends ConsumerStatefulWidget {
   const CofiWindow({super.key});
@@ -29,6 +31,32 @@ class _CofiWindowState extends ConsumerState<CofiWindow> {
     super.dispose();
   }
 
+  Future<void> _hide() async {
+    try {
+      await _windowChannel.invokeMethod('hide');
+    } catch (_) {}
+  }
+
+  Future<void> _show() async {
+    try {
+      await _windowChannel.invokeMethod('show');
+    } catch (_) {}
+  }
+
+  void _resetState() {
+    ref.read(queryProvider.notifier).set('');
+    ref.read(selectedIndexProvider.notifier).reset();
+  }
+
+  Future<void> _onShowRequested() async {
+    _resetState();
+    await _show();
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchNode.requestFocus();
+    });
+  }
+
   Future<void> _launchSelected() async {
     final async = ref.read(filteredEntriesProvider);
     final entries = async.value;
@@ -37,7 +65,7 @@ class _CofiWindowState extends ConsumerState<CofiWindow> {
     if (index < 0 || index >= entries.length) return;
     final ok = await _launcher.launch(entries[index]);
     if (ok) {
-      Future.microtask(() => exit(0));
+      await _hide();
     }
   }
 
@@ -50,7 +78,8 @@ class _CofiWindowState extends ConsumerState<CofiWindow> {
 
     if (key == LogicalKeyboardKey.escape ||
         (isCtrl && key == LogicalKeyboardKey.keyG)) {
-      exit(0);
+      _hide();
+      return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.enter ||
         key == LogicalKeyboardKey.numpadEnter) {
@@ -86,6 +115,9 @@ class _CofiWindowState extends ConsumerState<CofiWindow> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(showSignalProvider, (_, _) {
+      _onShowRequested();
+    });
     return Focus(
       focusNode: _shellNode,
       onKeyEvent: _onKey,
