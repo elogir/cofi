@@ -45,10 +45,20 @@ for_window [app_id="dev.cofi.cofi"] focus
 # Pre-warm at session start so the first trigger is instant.
 exec /full/path/to/cofi/build/linux/x64/release/bundle/cofi --hide
 
-# Toggle: subsequent invocations connect to the running daemon over a
-# Unix socket and ask it to show the window.
-bindsym $mod+d exec /full/path/to/cofi/build/linux/x64/release/bundle/cofi
+# Trigger: use the tiny C client (cofi-trigger, ~5 ms) instead of the
+# Flutter binary (~100 ms) so the keypress feels instant.
+bindsym $mod+d exec /full/path/to/cofi/build/linux/x64/release/bundle/cofi-trigger
 ```
+
+If you want the bindsym to also auto-spawn the daemon when it isn't
+running yet, use the fallback form:
+
+```sway
+bindsym $mod+d exec sh -c '/path/to/cofi-trigger || /path/to/cofi'
+```
+
+`cofi-trigger` exits with status 2 when the daemon isn't reachable, so
+the `||` falls through to a cold start.
 
 Reload sway (`$mod+Shift+c`). Trigger with `$mod+d`.
 
@@ -71,20 +81,28 @@ every trigger by staying resident:
   runs the full widget tree, and shows the window. Dismissing the window
   (Esc / Ctrl+G / launching an app / focus loss) **hides** it instead of
   exiting — the process stays alive.
-- **Subsequent invocations** connect to the socket and send a `show`
-  message, then exit immediately. The resident process resets state
-  (clears query, scrolls to top, refocuses search field) and asks GTK to
-  re-map the window. Cold start applies once per session; every trigger
-  after that is a few tens of ms.
-- The flag `--hide` tells the daemon to start with the window hidden
-  (useful when launched from sway's `exec` at session start). When passed
-  in client mode (a daemon is already running), the second invocation is
-  a no-op — it just confirms the daemon is up.
-- Quit the daemon with `SIGTERM` (e.g. `pkill -f bundle/cofi`) — the
-  signal handler cleans up the socket file before exiting.
+- **Subsequent triggers** use `cofi-trigger`, a tiny C client built
+  alongside the bundle. It connects to the socket, writes one of three
+  commands, and exits in ~3-5 ms — no Dart VM, no GTK, just `socket()` →
+  `connect()` → `write()`:
+  - `cofi-trigger` (no args) — sends `show`. Daemon resets query, scrolls
+    to top, refocuses the search field, and remaps the window via the
+    `dev.cofi.cofi/window` platform channel.
+  - `cofi-trigger --hide` — probe-only; useful in scripts checking
+    whether the daemon is up.
+  - `cofi-trigger --quit` — graceful shutdown.
+- The flag `--hide` on the **Flutter binary** tells the daemon to start
+  with the window hidden (used by sway's `exec` at session start). The
+  flag has the same name on `cofi-trigger` but means "no-op probe" — the
+  two binaries play distinct roles.
+- Cold start applies once per session; every trigger after that is
+  ~5 ms client + ~20-40 ms GTK remap + Wayland focus → well under the
+  ~50 ms perceptual threshold.
+- Quit the daemon with `cofi-trigger --quit` or `SIGTERM` (e.g.
+  `pkill -f bundle/cofi`); both clean up the socket file.
 
 If the socket file is stale (process died without cleanup) it's unlinked
-and re-bound automatically on the next start.
+and re-bound automatically on the next start of the Flutter binary.
 
 ## Keybindings
 

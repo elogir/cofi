@@ -126,3 +126,16 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+# Tiny C client used by sway bindings to nudge the resident daemon over a
+# Unix socket. Built separately from the Flutter app so triggers don't pay
+# the Dart VM startup cost.
+enable_language(C)
+add_executable(cofi-trigger "${CMAKE_CURRENT_SOURCE_DIR}/../tools/cofi-trigger.c")
+set_target_properties(cofi-trigger PROPERTIES
+  C_STANDARD 11
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/intermediates_do_not_run"
+)
+target_compile_options(cofi-trigger PRIVATE -Wall -O2)
+install(TARGETS cofi-trigger RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime)
