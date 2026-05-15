@@ -150,7 +150,7 @@ class IconResolver {
 
   static List<FileSystemEntity> _listSafely(Directory d) {
     try {
-      return d.listSync(followLinks: false);
+      return d.listSync(followLinks: true);
     } catch (_) {
       return const [];
     }
