@@ -95,10 +95,20 @@ static gboolean my_application_local_command_line(GApplication* application,
                                                   int* exit_status) {
   MyApplication* self = MY_APPLICATION(application);
 
+  gboolean admin_mode = FALSE;
   for (int i = 1; (*arguments)[i] != nullptr; i++) {
-    if (g_strcmp0((*arguments)[i], "--hide") == 0) {
+    const gchar* a = (*arguments)[i];
+    if (g_strcmp0(a, "--hide") == 0) {
       self->start_hidden = TRUE;
+    } else if (g_strcmp0(a, "db") == 0 ||
+               g_strcmp0(a, "help") == 0 ||
+               g_strcmp0(a, "-h") == 0 ||
+               g_strcmp0(a, "--cofi-help") == 0) {
+      admin_mode = TRUE;
     }
+  }
+  if (admin_mode) {
+    self->start_hidden = TRUE;
   }
 
   self->dart_entrypoint_arguments = g_strdupv(*arguments + 1);

@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../launcher/launcher.dart';
 import '../providers/filtered_provider.dart';
+import '../providers/launch_counts_provider.dart';
 import '../providers/query_provider.dart';
 import '../providers/selection_provider.dart';
 import '../providers/show_signal_provider.dart';
@@ -63,8 +66,14 @@ class _CofiWindowState extends ConsumerState<CofiWindow> {
     if (entries == null || entries.isEmpty) return;
     final index = ref.read(selectedIndexProvider);
     if (index < 0 || index >= entries.length) return;
-    final ok = await _launcher.launch(entries[index]);
+    final entry = entries[index];
+    final ok = await _launcher.launch(entry);
     if (ok) {
+      try {
+        await ref.read(launchCountsProvider.notifier).increment(entry.id);
+      } catch (e, st) {
+        stderr.writeln('cofi: failed to increment launch count for ${entry.id}: $e\n$st');
+      }
       await _hide();
     }
   }

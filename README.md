@@ -143,6 +143,46 @@ Entries are skipped when any of these apply:
 `Exec` is tokenised respecting `"…"` quoting and the field codes `%f %F %u
 %U %i %c %k %d %D %n %N %v %m` are stripped (`%%` becomes a literal `%`).
 
+## Launch-count ranking
+
+Every successful launch increments a counter for that `.desktop` entry id
+in a small SQLite database at
+`$XDG_DATA_HOME/cofi/launches.sqlite` (default `~/.local/share/cofi/`),
+managed via [`drift`](https://drift.simonbinder.eu/). Results are then
+ordered by:
+
+1. **launch count** descending — frequently used apps surface first
+2. **fuzzy score** descending — among entries with the same count, the
+   better match wins
+3. **name** alphabetically — final tiebreaker
+
+Empty queries skip step 2 and just show the most-used apps in alphabetical
+order within each count bucket. Note that a more-launched app with a weaker
+match outranks an unused app with a stronger match — count is the primary
+key, not a boost.
+
+## CLI
+
+A `db` subcommand group manages the launch-count database directly. These
+commands open the SQLite file without coordinating with a running daemon
+(restart the daemon to pick up external writes).
+
+```
+cofi db dump                # id <TAB> count <TAB> last_launched_iso, sorted by count desc
+cofi db set <id> <count>    # set the count for an entry id (e.g. "firefox", "dev.cofi.cofi")
+cofi db delete <id>         # remove a single row
+cofi db reset               # delete all rows
+cofi help                   # top-level usage
+cofi db                     # subcommand usage
+```
+
+`<id>` is the `.desktop` filename without the `.desktop` extension —
+exactly what cofi indexes by. The Flutter binary uses `--help` for GTK's
+own help; use `cofi help` (or `cofi --cofi-help`) to see cofi's CLI.
+
+The CLI also requires `libsqlite3.so` or `libsqlite3.so.0` on the system
+(Fedora ships the latter; most distros ship one or both).
+
 ## Icons
 
 `.desktop` `Icon=` values are resolved via a one-shot scan at startup:

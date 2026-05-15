@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'src/cli/admin_runner.dart';
 import 'src/providers/show_signal_provider.dart';
 import 'src/ui/cofi_window.dart';
 
@@ -54,6 +55,11 @@ Future<ServerSocket?> _bindServer() async {
 }
 
 Future<void> main(List<String> args) async {
+  if (isAdminInvocation(args)) {
+    final code = await CofiRunner().run(args);
+    exit(code ?? 0);
+  }
+
   if (await _runClient(args)) {
     exit(0);
   }

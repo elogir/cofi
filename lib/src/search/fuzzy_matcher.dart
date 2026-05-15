@@ -2,43 +2,60 @@ import '../desktop_entry/desktop_entry.dart';
 
 class _Scored {
   final DesktopEntry entry;
-  final int score;
-  const _Scored(this.entry, this.score);
+  final int fuzzyScore;
+  final int launchCount;
+  const _Scored(this.entry, this.fuzzyScore, this.launchCount);
 }
 
-List<DesktopEntry> fuzzyFilter(List<DesktopEntry> entries, String query) {
+List<DesktopEntry> fuzzyFilter(
+  List<DesktopEntry> entries,
+  String query,
+  Map<String, int> launchCounts,
+) {
   final q = query.trim().toLowerCase();
-  if (q.isEmpty) return entries;
+  if (q.isEmpty) {
+    final sorted = [...entries];
+    sorted.sort((a, b) {
+      final ca = launchCounts[a.id] ?? 0;
+      final cb = launchCounts[b.id] ?? 0;
+      final byCount = cb.compareTo(ca);
+      if (byCount != 0) return byCount;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return sorted;
+  }
 
   final scored = <_Scored>[];
   for (final entry in entries) {
-    final nameScore = _score(entry.name.toLowerCase(), q);
-    if (nameScore != null) {
-      scored.add(_Scored(entry, nameScore * 3));
-      continue;
-    }
-    final keywordsScore = entry.keywords
-        .map((k) => _score(k.toLowerCase(), q))
-        .whereType<int>()
-        .fold<int?>(null, (best, s) => best == null || s > best ? s : best);
-    if (keywordsScore != null) {
-      scored.add(_Scored(entry, keywordsScore * 2));
-      continue;
-    }
-    final commentScore = entry.comment == null
-        ? null
-        : _score(entry.comment!.toLowerCase(), q);
-    if (commentScore != null) {
-      scored.add(_Scored(entry, commentScore));
-    }
+    final fuzzy = _bestMatchScore(entry, q);
+    if (fuzzy == null) continue;
+    scored.add(_Scored(entry, fuzzy, launchCounts[entry.id] ?? 0));
   }
 
   scored.sort((a, b) {
-    final byScore = b.score.compareTo(a.score);
-    if (byScore != 0) return byScore;
+    final byCount = b.launchCount.compareTo(a.launchCount);
+    if (byCount != 0) return byCount;
+    final byFuzzy = b.fuzzyScore.compareTo(a.fuzzyScore);
+    if (byFuzzy != 0) return byFuzzy;
     return a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase());
   });
   return scored.map((s) => s.entry).toList();
+}
+
+int? _bestMatchScore(DesktopEntry entry, String query) {
+  final nameScore = _score(entry.name.toLowerCase(), query);
+  if (nameScore != null) return nameScore * 3;
+  int? best;
+  for (final k in entry.keywords) {
+    final s = _score(k.toLowerCase(), query);
+    if (s != null && (best == null || s > best)) best = s;
+  }
+  if (best != null) return best * 2;
+  if (entry.comment != null) {
+    final s = _score(entry.comment!.toLowerCase(), query);
+    if (s != null) return s;
+  }
+  return null;
 }
 
 int? _score(String haystack, String needle) {
