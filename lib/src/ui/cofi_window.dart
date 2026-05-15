@@ -22,35 +22,16 @@ class CofiWindow extends ConsumerStatefulWidget {
   ConsumerState<CofiWindow> createState() => _CofiWindowState();
 }
 
-class _CofiWindowState extends ConsumerState<CofiWindow>
-    with WidgetsBindingObserver {
+class _CofiWindowState extends ConsumerState<CofiWindow> {
   final FocusNode _shellNode = FocusNode(debugLabel: 'cofi-shell');
   final FocusNode _searchNode = FocusNode(debugLabel: 'cofi-search');
   final Launcher _launcher = Launcher();
-  AppLifecycleState? _lastLifecycleState;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _shellNode.dispose();
     _searchNode.dispose();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    final last = _lastLifecycleState;
-    _lastLifecycleState = state;
-    if (state == AppLifecycleState.inactive &&
-        last == AppLifecycleState.resumed) {
-      _hide();
-    }
   }
 
   void _resetState() {
