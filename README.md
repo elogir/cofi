@@ -4,6 +4,8 @@ A [rofi](https://github.com/davatorium/rofi)-like application launcher for
 Sway/Wayland, written in Flutter. Fuzzy-search your installed apps, launch
 on Enter, most-used apps surface first.
 
+![cofi screenshot](docs/screenshot.png)
+
 ## Build
 
 ```bash
@@ -26,7 +28,6 @@ Add to `~/.config/sway/config` (adjust paths):
 ```sway
 for_window [app_id="dev.cofi.cofi"] floating enable
 for_window [app_id="dev.cofi.cofi"] move position center
-for_window [app_id="dev.cofi.cofi"] border none
 for_window [app_id="dev.cofi.cofi"] focus
 
 exec /path/to/cofi --hide               # warm the daemon at login
